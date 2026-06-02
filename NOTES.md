@@ -1,5 +1,30 @@
 # Dev notes
 
+## Tuning quirks learned on-device (IMPORTANT)
+
+Verified by driving the real MCU and watching `U_FREQ` echoes (logcat tag `FytRadio`):
+
+- **Direct frequency-set does NOT work.** `radio.cmd(C_FREQ=13, [freqDekahertz])` dispatches
+  fine but the MCU never tunes or echoes. Tried it; after a subsequent `FREQ_UP` the tuner was
+  still where it started. So C_FREQ is effectively read-only here.
+- **`C_SAVE_CHANNEL=8` did not persist our frequency** into the MCU preset slot (recalling the
+  slot afterwards still tuned to its old value). Possibly only writes when locked onto a real
+  station — unverifiable on a signal-less bench, so we don't depend on it.
+- **`C_SELECT_CHANNEL=7` works** but tunes to the MCU's *own* preset table (independent of ours),
+  so it's the wrong tool for our presets.
+- **`C_FREQ_UP=3` / `C_FREQ_DOWN=4` / `C_SEEK_*` / `C_BAND=11` are rock-solid** and each echoes
+  `U_FREQ`. So **preset recall is implemented as step-to-target**: from the last MCU-confirmed
+  frequency, fire N FREQ_UP/DOWN (30 ms apart, capped) until we reach the saved kHz. Verified:
+  saved 105.5, moved to 107.1, recall stepped `107100 -> 105500 (8 down)` and landed exactly.
+  Presets are stored entirely in our own `PresetStore` (freq + RDS name); the MCU preset table
+  is not used.
+
+- **Band switch echoes the OLD band once.** After `cmd(C_BAND,[BAND_SWITCH_AM])` the MCU first
+  sends `U_BAND raw=0` (FM, the previous band) before settling on AM — that stale echo used to
+  revert the UI, so you had to tap twice. Fixed by tracking a `pendingBand` and ignoring a
+  contradicting `U_BAND` for `BAND_ECHO_WINDOW_MS` (2 s), self-healing afterwards so external
+  band changes still register.
+
 ## SYU IPC surface — REVERSE-ENGINEERED AND VERIFIED
 
 The stock `com.syu.carradio` does NOT use broadcasts; it talks to the MCU over SYU's

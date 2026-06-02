@@ -1,7 +1,15 @@
 package com.fytradio.radio
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -56,11 +64,26 @@ class RadioController(
      *  Used to make sure we never leave the head unit muted when our app goes away. */
     private var mutedByUs = false
 
+    /** The band the user just switched to, pending MCU confirmation. While set, we ignore
+     *  contradicting U_BAND echoes (the MCU briefly re-reports the old band). Self-heals
+     *  after [BAND_ECHO_WINDOW_MS] so a genuine external band change is still picked up. */
+    private var pendingBand: Band? = null
+    private var pendingBandAtMs = 0L
+
+    /** Last MCU-confirmed frequency (from U_FREQ) — the tuner's true position, used as the
+     *  starting point when stepping to a preset. 0 = not yet known. */
+    private var lastConfirmedKhz = 0
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    /** Active "step to a preset frequency" job; cancelled if the user tunes manually. */
+    private var recallJob: Job? = null
+
     fun register() {
         bridge.bind()
     }
 
     fun unregister() {
+        recallJob?.cancel()
         // Safety: if we backgrounded while powered-off (radio source held + muted), undo
         // both so we don't leave the unit silently muted or stuck on a dead radio source.
         if (mutedByUs) {
@@ -75,6 +98,11 @@ class RadioController(
 
     fun setBand(band: Band) {
         if (band == _tuner.value.band) return
+        recallJob?.cancel()
+        // Record the target so we can ignore the MCU's stale U_BAND echo of the OLD band
+        // that arrives right after the switch (it would otherwise revert the UI).
+        pendingBand = band
+        pendingBandAtMs = SystemClock.uptimeMillis()
         _tuner.update { it.copy(band = band, frequencyKhz = lastKnownOrDefault(band), rdsPs = null, rdsRt = null) }
         bridge.setBand(band)
     }
@@ -82,6 +110,7 @@ class RadioController(
     fun toggleBand() = setBand(if (_tuner.value.band == Band.FM) Band.AM else Band.FM)
 
     fun tuneUp() {
+        recallJob?.cancel()
         val s = _tuner.value
         val next = region.nextOnGrid(s.band, s.frequencyKhz, +1)
         _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null) }
@@ -89,6 +118,7 @@ class RadioController(
     }
 
     fun tuneDown() {
+        recallJob?.cancel()
         val s = _tuner.value
         val next = region.nextOnGrid(s.band, s.frequencyKhz, -1)
         _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null) }
@@ -96,36 +126,64 @@ class RadioController(
     }
 
     fun seekUp() {
+        recallJob?.cancel()
         _tuner.update { it.copy(rdsPs = null, rdsRt = null, searching = true) }
         bridge.seekUp()
     }
 
     fun seekDown() {
+        recallJob?.cancel()
         _tuner.update { it.copy(rdsPs = null, rdsRt = null, searching = true) }
         bridge.seekDown()
     }
 
     fun tuneTo(khz: Int) {
-        val s = _tuner.value
-        val snapped = region.clampToGrid(s.band, khz)
-        _tuner.update { it.copy(frequencyKhz = snapped, rdsPs = null, rdsRt = null) }
-        val mcuFreq = khzToMcu(s.band, snapped)
-        bridge.setFrequency(mcuFreq)
+        val band = _tuner.value.band
+        _tuner.update { it.copy(rdsPs = null, rdsRt = null) }
+        stepToward(band, region.clampToGrid(band, khz), "tuneTo")
     }
 
     fun recallPreset(index: Int) {
         val band = _tuner.value.band
         val preset = presets.get(band, index) ?: return
-        // Show the saved name immediately on recall; it'll refresh from live RDS if/when it arrives.
-        _tuner.update { it.copy(frequencyKhz = preset.freqKhz, rdsPs = preset.name, rdsRt = null) }
-        bridge.recallPreset(index)
+        val target = region.clampToGrid(band, preset.freqKhz)
+        // The MCU ignores direct frequency-set (C_FREQ) and won't reliably store our presets in
+        // its own table, but FREQ_UP/FREQ_DOWN are rock-solid — so step from where the tuner
+        // actually is to our saved frequency. Each step echoes U_FREQ, keeping the UI honest.
+        _tuner.update { it.copy(rdsPs = preset.name, rdsRt = null) }
+        stepToward(band, target, "recall[$index]")
+    }
+
+    /** Step the tuner from its current position to [targetKhz] using verified FREQ_UP/DOWN. */
+    private fun stepToward(band: Band, targetKhz: Int, why: String) {
+        recallJob?.cancel()
+        val stepKhz = region.stepKhz(band)
+        val start = region.clampToGrid(band, if (lastConfirmedKhz > 0) lastConfirmedKhz else _tuner.value.frequencyKhz)
+        val delta = targetKhz - start
+        val steps = (Math.abs(delta) / stepKhz).coerceAtMost(MAX_RECALL_STEPS)
+        val up = delta > 0
+        Log.i(TAG, "$why: step $start -> $targetKhz ($steps ${if (up) "up" else "down"})")
+        if (steps == 0) {
+            _tuner.update { it.copy(frequencyKhz = targetKhz) }
+            return
+        }
+        recallJob = scope.launch {
+            repeat(steps) {
+                if (!isActive) return@launch
+                if (up) bridge.stepUp() else bridge.stepDown()
+                delay(RECALL_STEP_DELAY_MS)
+            }
+        }
     }
 
     fun savePresetHere(index: Int) {
         val s = _tuner.value
-        // Capture the current RDS station name (if we have one) so the tile can show it.
-        presets.set(s.band, index, Preset(freqKhz = s.frequencyKhz, name = s.rdsPs))
-        bridge.savePreset(index)
+        // Presets are entirely ours — recall steps the tuner to this exact frequency, so we
+        // just need the frequency + RDS name stored locally (no dependence on the MCU's own
+        // preset table, which it doesn't let us write reliably).
+        val freq = if (lastConfirmedKhz > 0) lastConfirmedKhz else s.frequencyKhz
+        Log.i(TAG, "savePresetHere[$index] band=${s.band} freq=${freq}kHz name=${s.rdsPs}")
+        presets.set(s.band, index, Preset(freqKhz = freq, name = s.rdsPs))
     }
 
     fun clearPreset(band: Band, index: Int) = presets.clear(band, index)
@@ -167,12 +225,24 @@ class RadioController(
             SyuRadioBridge.Updates.BAND -> {
                 val raw = ints?.firstOrNull() ?: return
                 val band = mcuBand(raw) ?: return
+                val pend = pendingBand
+                Log.i(TAG, "U_BAND raw=$raw -> $band (cur=${_tuner.value.band} pending=$pend)")
+                if (pend != null) {
+                    when {
+                        band == pend -> pendingBand = null  // MCU confirmed our switch
+                        SystemClock.uptimeMillis() - pendingBandAtMs < BAND_ECHO_WINDOW_MS -> {
+                            return  // stale echo of the old band — ignore it
+                        }
+                        else -> pendingBand = null  // window expired; accept external change below
+                    }
+                }
                 _tuner.update { it.copy(band = band, confirmedByMcu = true) }
             }
             SyuRadioBridge.Updates.FREQ -> {
                 val raw = ints?.firstOrNull() ?: return
                 val band = _tuner.value.band
                 val khz = mcuToKhz(band, raw)
+                lastConfirmedKhz = khz
                 Log.i(TAG, "U_FREQ raw=$raw -> ${khz}kHz (band=$band, fmUnit=$fmUnitKhz amUnit=$amUnitKhz)")
                 // A fresh frequency means any seek/scan has landed — clear the searching flag.
                 _tuner.update { it.copy(frequencyKhz = khz, confirmedByMcu = true, searching = false) }
@@ -282,5 +352,10 @@ class RadioController(
 
     companion object {
         private const val TAG = "FytRadio"
+        /** How long after a user band switch we suppress a contradicting U_BAND echo. */
+        private const val BAND_ECHO_WINDOW_MS = 2_000L
+        /** Pacing + safety cap for stepping the tuner to a preset frequency. */
+        private const val RECALL_STEP_DELAY_MS = 30L
+        private const val MAX_RECALL_STEPS = 250
     }
 }
