@@ -24,7 +24,7 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
   <img src="screenshots/settings.png" alt="Settings — theme, Material You, accent + custom color, auto-start" width="32%" />
 </p>
 
-<p align="center"><em>FM tuner · AM band · settings (theme, Material You / accent + custom color, auto-start). Shown full-screen on the 768×1024 unit.</em></p>
+<p align="center"><em>FM tuner · AM band · settings (theme, Material You / accent + custom color, auto-start). Captured on the 768×1024 unit, head-unit status/nav bars cropped out.</em></p>
 
 ## What's built
 
