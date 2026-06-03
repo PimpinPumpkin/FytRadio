@@ -18,14 +18,13 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
 
 ## Screenshots
 
-<p align="center"><img src="screenshots/main.png" alt="FM tuner running on the head unit" width="46%" /></p>
-
 <p align="center">
-  <img src="screenshots/am.png" alt="AM band" width="40%" />
-  <img src="screenshots/settings.png" alt="Settings — theme, accent, auto-start" width="40%" />
+  <img src="screenshots/main.png" alt="FM tuner" width="32%" />
+  <img src="screenshots/am.png" alt="AM band" width="32%" />
+  <img src="screenshots/settings.png" alt="Settings — theme, Material You, accent + custom color, auto-start" width="32%" />
 </p>
 
-<p align="center"><em>FM tuner (full screen, running on the unit) · AM band · settings — theme, accent color, and auto-start. The two lower shots have the head-unit status/nav bars cropped.</em></p>
+<p align="center"><em>FM tuner · AM band · settings (theme, Material You / accent + custom color, auto-start). Shown full-screen on the 768×1024 unit.</em></p>
 
 ## What's built
 
@@ -48,8 +47,10 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
 - 6 presets per band, persisted in `SharedPreferences`. Tap to recall, long-press to
   save the current station — the RDS station name is saved alongside the frequency when
   it's known, so tiles can read "92.5 / KEXP".
-- Settings behind a corner gear (no extra tab): **theme** (System / Light / Dark), an
-  **accent color** picker, and the auto-start toggle below.
+- Settings behind a corner gear (no extra tab): **theme** (System / Light / Dark, defaults
+  to System), **accent color** — preset swatches, an arbitrary **custom color** picker
+  (hue + saturation/value), or **Material You** to pull the accent from the device's colors
+  — and the auto-start toggle.
 - **Start radio when app opens** (on by default): on launch — and whenever you switch back
   to the app from Bluetooth/another source — the radio reclaims the MCU audio source,
   pausing whatever else was playing. Turn it off to leave the current source alone until

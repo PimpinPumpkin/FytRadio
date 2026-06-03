@@ -15,16 +15,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.fytradio.ui.theme.AccentSwatches
@@ -40,12 +50,22 @@ import com.fytradio.ui.theme.ThemeMode
 fun SettingsDialog(
     selectedAccent: Int,
     onPickAccent: (Int) -> Unit,
+    dynamicColor: Boolean,
+    onSetDynamicColor: (Boolean) -> Unit,
     themeMode: ThemeMode,
     onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
     onSetAutoStart: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var showColorPicker by remember { mutableStateOf(false) }
+    if (showColorPicker) {
+        ColorPickerDialog(
+            initial = selectedAccent,
+            onConfirm = { onPickAccent(it); showColorPicker = false },
+            onDismiss = { showColorPicker = false },
+        )
+    }
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
@@ -105,22 +125,48 @@ fun SettingsDialog(
                     }
                 }
                 Spacer16()
-                Text(
-                    text = "Accent color",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer16()
-                FlowRow(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    for (argb in AccentSwatches) {
-                        Swatch(
-                            color = Color(argb),
-                            selected = argb == selectedAccent,
-                            onClick = { onPickAccent(argb) },
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Material You",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Pull the accent from the device's colors",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = dynamicColor, onCheckedChange = onSetDynamicColor)
+                }
+                if (!dynamicColor) {
+                    Spacer16()
+                    Text(
+                        text = "Accent color",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer16()
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        for (argb in AccentSwatches) {
+                            Swatch(
+                                color = Color(argb),
+                                selected = argb == selectedAccent,
+                                onClick = { onPickAccent(argb) },
+                            )
+                        }
+                        CustomSwatch(
+                            currentAccent = selectedAccent,
+                            isCustom = selectedAccent !in AccentSwatches,
+                            onClick = { showColorPicker = true },
                         )
                     }
                 }
@@ -154,6 +200,36 @@ private fun ThemeSegment(
         contentAlignment = Alignment.Center,
     ) {
         Text(text = label, style = MaterialTheme.typography.labelLarge, color = fg)
+    }
+}
+
+/** Trailing swatch that opens the arbitrary-color picker. Shows a rainbow + "+" to invite,
+ *  or the active custom color with an edit pencil + selection ring when one is in use. */
+@Composable
+private fun CustomSwatch(currentAccent: Int, isCustom: Boolean, onClick: () -> Unit) {
+    val rainbow = Brush.sweepGradient(
+        (0..6).map { Color.hsv(it * 60f, 0.85f, 1f) } + Color.hsv(0f, 0.85f, 1f)
+    )
+    val onColor = if (Color(currentAccent).luminance() > 0.5f) Color.Black else Color.White
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .then(if (isCustom) Modifier.background(Color(currentAccent)) else Modifier.background(rainbow))
+            .border(
+                width = if (isCustom) 3.dp else 0.dp,
+                color = if (isCustom) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                shape = CircleShape,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (isCustom) Icons.Filled.Edit else Icons.Filled.Add,
+            contentDescription = "Custom color",
+            tint = if (isCustom) onColor else Color.White,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 

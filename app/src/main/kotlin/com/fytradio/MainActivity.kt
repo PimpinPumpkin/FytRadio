@@ -30,10 +30,16 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putBoolean("auto_start", enabled).apply()
     }
 
-    private val themeMode = MutableStateFlow(ThemeMode.DARK)
+    private val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     private fun setThemeMode(mode: ThemeMode) {
         themeMode.value = mode
         prefs.edit().putString("theme_mode", mode.name).apply()
+    }
+
+    private val dynamicColor = MutableStateFlow(false)
+    private fun setDynamicColor(enabled: Boolean) {
+        dynamicColor.value = enabled
+        prefs.edit().putBoolean("dynamic_color", enabled).apply()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,8 +49,9 @@ class MainActivity : ComponentActivity() {
         accentArgb.value = prefs.getInt("accent", DefaultAccentArgb)
         autoStart.value = prefs.getBoolean("auto_start", true)
         themeMode.value = runCatching {
-            ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.DARK.name)!!)
-        }.getOrDefault(ThemeMode.DARK)
+            ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.SYSTEM.name)!!)
+        }.getOrDefault(ThemeMode.SYSTEM)
+        dynamicColor.value = prefs.getBoolean("dynamic_color", false)
 
         // Fresh open: if enabled, queue a power-on that fires once the tuner is connected
         // (grabs the MCU audio source, pausing whatever else was playing).
@@ -53,7 +60,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val accent by accentArgb.collectAsState()
             val mode by themeMode.collectAsState()
-            FytRadioTheme(accentArgb = accent, themeMode = mode) {
+            val dynamic by dynamicColor.collectAsState()
+            FytRadioTheme(accentArgb = accent, themeMode = mode, dynamicColor = dynamic) {
                 val tuner by controller.tuner.collectAsState()
                 val presetState by controller.presetState.collectAsState()
                 val diagnostics by controller.diagnostics.collectAsState()
@@ -65,6 +73,8 @@ class MainActivity : ComponentActivity() {
                     diagnostics = diagnostics,
                     accentArgb = accent,
                     onPickAccent = { setAccent(it) },
+                    dynamicColor = dynamic,
+                    onSetDynamicColor = { setDynamicColor(it) },
                     themeMode = mode,
                     onSetThemeMode = { setThemeMode(it) },
                     autoStart = autoStartOn,

@@ -1,13 +1,17 @@
 package com.fytradio.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -89,7 +93,8 @@ private fun onAccent(accent: Color): Color =
 @Composable
 fun FytRadioTheme(
     accentArgb: Int = DefaultAccentArgb,
-    themeMode: ThemeMode = ThemeMode.DARK,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val dark = when (themeMode) {
@@ -97,13 +102,19 @@ fun FytRadioTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val accent = Color(accentArgb)
-    val base = if (dark) CarDark else CarLight
-    val scheme = base.copy(
-        primary = accent,
-        onPrimary = onAccent(accent),
-        primaryContainer = accent,
-        onPrimaryContainer = onAccent(accent),
-    )
+    val context = LocalContext.current
+    val scheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Material You: pull the whole palette from the device's system colors.
+        if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else {
+        val accent = Color(accentArgb)
+        val base = if (dark) CarDark else CarLight
+        base.copy(
+            primary = accent,
+            onPrimary = onAccent(accent),
+            primaryContainer = accent,
+            onPrimaryContainer = onAccent(accent),
+        )
+    }
     MaterialTheme(colorScheme = scheme, typography = CarTypography, content = content)
 }

@@ -45,6 +45,8 @@ fun RadioScreen(
     diagnostics: List<String>,
     accentArgb: Int,
     onPickAccent: (Int) -> Unit,
+    dynamicColor: Boolean,
+    onSetDynamicColor: (Boolean) -> Unit,
     themeMode: ThemeMode,
     onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
@@ -132,6 +134,8 @@ fun RadioScreen(
                 SettingsDialog(
                     selectedAccent = accentArgb,
                     onPickAccent = onPickAccent,
+                    dynamicColor = dynamicColor,
+                    onSetDynamicColor = onSetDynamicColor,
                     themeMode = themeMode,
                     onSetThemeMode = onSetThemeMode,
                     autoStart = autoStart,
