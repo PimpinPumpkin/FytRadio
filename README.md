@@ -16,6 +16,16 @@ front-end for the same tuner — big frequency readout, six presets, and not muc
 
 Non-rooted. Coexists with the stock apps rather than replacing them.
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/main.png" alt="FM tuner" width="32%" />
+  <img src="screenshots/am.png" alt="AM band" width="32%" />
+  <img src="screenshots/settings.png" alt="Settings — accent picker and auto-start" width="32%" />
+</p>
+
+<p align="center"><em>FM tuner · AM band · settings (accent picker + auto-start). Captured on the 768×1024 unit; the head-unit status/nav bars are cropped out.</em></p>
+
 ## What's built
 
 - Large frequency display (FM rendered as `101.1 MHz`, AM as `1010 kHz`). The MCU's
