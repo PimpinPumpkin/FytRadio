@@ -18,13 +18,14 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
 
 ## Screenshots
 
+<p align="center"><img src="screenshots/main.png" alt="FM tuner running on the head unit" width="46%" /></p>
+
 <p align="center">
-  <img src="screenshots/main.png" alt="FM tuner" width="32%" />
-  <img src="screenshots/am.png" alt="AM band" width="32%" />
-  <img src="screenshots/settings.png" alt="Settings — accent picker and auto-start" width="32%" />
+  <img src="screenshots/am.png" alt="AM band" width="40%" />
+  <img src="screenshots/settings.png" alt="Settings — theme, accent, auto-start" width="40%" />
 </p>
 
-<p align="center"><em>FM tuner · AM band · settings (accent picker + auto-start). Captured on the 768×1024 unit; the head-unit status/nav bars are cropped out.</em></p>
+<p align="center"><em>FM tuner (full screen, running on the unit) · AM band · settings — theme, accent color, and auto-start. The two lower shots have the head-unit status/nav bars cropped.</em></p>
 
 ## What's built
 
@@ -47,10 +48,12 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
 - 6 presets per band, persisted in `SharedPreferences`. Tap to recall, long-press to
   save the current station — the RDS station name is saved alongside the frequency when
   it's known, so tiles can read "92.5 / KEXP".
-- Accent color picker tucked behind a settings gear in the corner (no extra tab).
-- **Start radio when app opens** (settings toggle, on by default): on launch the app grabs
-  the MCU audio source as soon as the tuner connects, pausing whatever else was playing
-  (Bluetooth / other apps). Turn it off to leave the current source alone until you tap power.
+- Settings behind a corner gear (no extra tab): **theme** (System / Light / Dark), an
+  **accent color** picker, and the auto-start toggle below.
+- **Start radio when app opens** (on by default): on launch — and whenever you switch back
+  to the app from Bluetooth/another source — the radio reclaims the MCU audio source,
+  pausing whatever else was playing. Turn it off to leave the current source alone until
+  you tap power.
 - "No tuner feedback yet" diagnostic panel that lists the last 20 SYU module updates
   received — handy for confirming the MCU is awake and talking (see `NOTES.md`).
 
@@ -62,9 +65,9 @@ app/
   src/main/kotlin/com/fytradio/
     MainActivity.kt
     radio/
-      RadioController.kt     ← StateFlows + the BroadcastReceiver
-      SyuRadioBridge.kt      ← all SYU intent constants + dispatch
-      PresetStore.kt         ← SharedPreferences-backed presets
+      RadioController.kt     ← StateFlows + IPC callback handling, all command logic
+      SyuRadioBridge.kt      ← raw IBinder transact to com.syu.ms (toolkit + modules)
+      PresetStore.kt         ← SharedPreferences-backed presets (freq + RDS name)
       RadioModels.kt         ← Band, Region, TunerState, formatters
     ui/
       RadioScreen.kt
@@ -72,18 +75,40 @@ app/
       BandSelector.kt
       TuneControls.kt
       PresetGrid.kt
+      SettingsDialog.kt      ← theme / accent / auto-start
       theme/Theme.kt
   src/main/res/values/{strings.xml,themes.xml}
+.github/workflows/{build.yml,release.yml}
 build.gradle.kts                 ← root
 settings.gradle.kts
 gradle/libs.versions.toml
 ```
 
-`RadioController` is the only class that knows about the SYU bridge or the
-BroadcastReceiver. UI is dumb Compose — every screen consumes `StateFlow` and
-emits callbacks.
+`RadioController` is the only class that talks to the SYU bridge. UI is dumb Compose —
+every screen consumes `StateFlow` and emits callbacks.
 
-## Build & deploy to the unit
+## Releases & updates
+
+Pushing a `vX.Y.Z` tag triggers `.github/workflows/release.yml`, which builds a **signed**
+release APK and attaches it to a GitHub Release. Grab the latest from the
+[Releases page](https://github.com/PimpinPumpkin/FytRadio/releases), copy it to the unit,
+and install.
+
+Every release is signed with the **same key** (held in the repo's Actions secrets), so
+new versions **install in place** over an older release — no uninstall, no signature
+conflict. `versionCode`/`versionName` are derived from the tag automatically.
+
+> One-time note: if you're currently running a locally-built **debug** APK, uninstall it
+> once before installing the first signed release (debug and release use different keys).
+> After that, every release upgrades in place.
+
+Cutting a release:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0    # CI builds + publishes the signed APK
+```
+
+## Build & deploy to the unit (development)
 
 Wireless debugging only — the head unit has no usable USB-data port. The adb
 port rolls on every reboot.
