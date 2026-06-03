@@ -10,6 +10,7 @@ import com.fytradio.radio.RadioController
 import com.fytradio.ui.RadioScreen
 import com.fytradio.ui.theme.DefaultAccentArgb
 import com.fytradio.ui.theme.FytRadioTheme
+import com.fytradio.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
@@ -29,12 +30,21 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putBoolean("auto_start", enabled).apply()
     }
 
+    private val themeMode = MutableStateFlow(ThemeMode.DARK)
+    private fun setThemeMode(mode: ThemeMode) {
+        themeMode.value = mode
+        prefs.edit().putString("theme_mode", mode.name).apply()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val presets = PresetStore(applicationContext)
         controller = RadioController(applicationContext, presets)
         accentArgb.value = prefs.getInt("accent", DefaultAccentArgb)
         autoStart.value = prefs.getBoolean("auto_start", true)
+        themeMode.value = runCatching {
+            ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.DARK.name)!!)
+        }.getOrDefault(ThemeMode.DARK)
 
         // Fresh open: if enabled, queue a power-on that fires once the tuner is connected
         // (grabs the MCU audio source, pausing whatever else was playing).
@@ -42,7 +52,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val accent by accentArgb.collectAsState()
-            FytRadioTheme(accentArgb = accent) {
+            val mode by themeMode.collectAsState()
+            FytRadioTheme(accentArgb = accent, themeMode = mode) {
                 val tuner by controller.tuner.collectAsState()
                 val presetState by controller.presetState.collectAsState()
                 val diagnostics by controller.diagnostics.collectAsState()
@@ -54,6 +65,8 @@ class MainActivity : ComponentActivity() {
                     diagnostics = diagnostics,
                     accentArgb = accent,
                     onPickAccent = { setAccent(it) },
+                    themeMode = mode,
+                    onSetThemeMode = { setThemeMode(it) },
                     autoStart = autoStartOn,
                     onSetAutoStart = { setAutoStart(it) },
                     onSetBand = { controller.setBand(it) },
@@ -73,6 +86,13 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         controller.register()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Returning to the app (e.g. after Bluetooth took over) reclaims the radio source
+        // if it was on, so the other audio actually stops.
+        controller.reassertIfOn()
     }
 
     override fun onStop() {

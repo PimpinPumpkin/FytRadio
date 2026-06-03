@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.fytradio.ui.theme.AccentSwatches
+import com.fytradio.ui.theme.ThemeMode
 
 /**
  * Lightweight settings sheet. Today it just holds the accent-color picker (tapping a
@@ -38,6 +40,8 @@ import com.fytradio.ui.theme.AccentSwatches
 fun SettingsDialog(
     selectedAccent: Int,
     onPickAccent: (Int) -> Unit,
+    themeMode: ThemeMode,
+    onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
     onSetAutoStart: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -74,6 +78,34 @@ fun SettingsDialog(
                 }
                 Spacer16()
                 Text(
+                    text = "Theme",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.size(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    for (mode in ThemeMode.entries) {
+                        ThemeSegment(
+                            label = when (mode) {
+                                ThemeMode.SYSTEM -> "System"
+                                ThemeMode.LIGHT -> "Light"
+                                ThemeMode.DARK -> "Dark"
+                            },
+                            selected = mode == themeMode,
+                            onClick = { onSetThemeMode(mode) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+                Spacer16()
+                Text(
                     text = "Accent color",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -101,6 +133,27 @@ fun SettingsDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeSegment(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = label, style = MaterialTheme.typography.labelLarge, color = fg)
     }
 }
 

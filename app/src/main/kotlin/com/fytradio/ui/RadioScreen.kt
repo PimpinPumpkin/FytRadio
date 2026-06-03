@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.fytradio.radio.Band
 import com.fytradio.radio.Preset
 import com.fytradio.radio.TunerState
+import com.fytradio.ui.theme.ThemeMode
 
 /**
  * Top-level radio screen. Stateless w.r.t. the controller — everything comes in via
@@ -44,6 +45,8 @@ fun RadioScreen(
     diagnostics: List<String>,
     accentArgb: Int,
     onPickAccent: (Int) -> Unit,
+    themeMode: ThemeMode,
+    onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
     onSetAutoStart: (Boolean) -> Unit,
     onSetBand: (Band) -> Unit,
@@ -129,6 +132,8 @@ fun RadioScreen(
                 SettingsDialog(
                     selectedAccent = accentArgb,
                     onPickAccent = onPickAccent,
+                    themeMode = themeMode,
+                    onSetThemeMode = onSetThemeMode,
                     autoStart = autoStart,
                     onSetAutoStart = onSetAutoStart,
                     onDismiss = { showSettings = false },

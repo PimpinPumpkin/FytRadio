@@ -60,12 +60,20 @@ class RadioController(
         handleUpdate(u, ints, strs)
     }.also { b ->
         b.onConnected = {
-            // Fire a queued auto-start only once the toolkit is actually connected, so the
-            // powerOn() command isn't dropped on the floor before the binder is ready.
-            if (pendingAutoStart) {
-                pendingAutoStart = false
-                Log.i(TAG, "auto-start: powering on radio")
-                powerOn()
+            // Fire queued work only once the toolkit is actually connected, so the powerOn()
+            // command isn't dropped on the floor before the binder is ready.
+            when {
+                pendingAutoStart -> {
+                    pendingAutoStart = false
+                    Log.i(TAG, "auto-start: powering on radio")
+                    powerOn()
+                }
+                // Warm reconnect (e.g. came back from Bluetooth) while the radio was on —
+                // reclaim the MCU audio source so BT/other audio actually stops.
+                _tuner.value.isOnAir -> {
+                    Log.i(TAG, "reconnect: reclaiming radio source")
+                    powerOn()
+                }
             }
         }
     }
@@ -96,6 +104,16 @@ class RadioController(
      *  fresh app open when the user's "start radio on open" setting is enabled. */
     fun armAutoStart() {
         pendingAutoStart = true
+    }
+
+    /** Re-assert the radio source when returning to the app, if the radio was on. Covers the
+     *  warm switch-back from Bluetooth where the binder stayed connected (so [onConnected]
+     *  doesn't refire). Safe no-op if the binder isn't ready — [onConnected] then handles it. */
+    fun reassertIfOn() {
+        if (_tuner.value.isOnAir) {
+            Log.i(TAG, "resume: re-asserting radio source")
+            powerOn()
+        }
     }
 
     fun register() {

@@ -1,14 +1,19 @@
 package com.fytradio.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+
+/** UI theme preference. SYSTEM follows the head unit's day/night setting. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 /** Default accent (the blue primary) and the swatches offered in the settings picker. */
 const val DefaultAccentArgb: Int = 0xFF7AB7FF.toInt()
@@ -23,8 +28,7 @@ val AccentSwatches: List<Int> = listOf(
     0xFFC9A7FF, // purple
 ).map { it.toInt() }
 
-// Tuned for a 768x1024 portrait car screen. Mirrors FytBt's palette so the two apps look
-// like siblings on the head unit launcher. `primary` is overridden by the user's accent.
+// Tuned for a 768x1024 portrait car screen. `primary` is overridden by the user's accent.
 private val CarDark = darkColorScheme(
     primary = Color(DefaultAccentArgb),
     onPrimary = Color(0xFF002A52),
@@ -45,6 +49,27 @@ private val CarDark = darkColorScheme(
     onError = Color(0xFF370001),
 )
 
+// Light counterpart — high-contrast, low-glare for daytime.
+private val CarLight = lightColorScheme(
+    primary = Color(DefaultAccentArgb),
+    onPrimary = Color(0xFF002A52),
+    primaryContainer = Color(0xFFD8E5FF),
+    onPrimaryContainer = Color(0xFF001B3A),
+    secondary = Color(0xFF356A1A),
+    onSecondary = Color(0xFFFFFFFF),
+    tertiary = Color(0xFF8A4B16),
+    onTertiary = Color(0xFFFFFFFF),
+    background = Color(0xFFF6F8FB),
+    onBackground = Color(0xFF14171C),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF14171C),
+    surfaceVariant = Color(0xFFE6E9EF),
+    onSurfaceVariant = Color(0xFF44474E),
+    outline = Color(0xFF8A8E96),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFFFF),
+)
+
 private val CarTypography = Typography(
     displayLarge = TextStyle(fontSize = 128.sp, fontWeight = FontWeight.Light, lineHeight = 128.sp, letterSpacing = (-4).sp),
     displayMedium = TextStyle(fontSize = 80.sp, fontWeight = FontWeight.Light, lineHeight = 88.sp, letterSpacing = (-2).sp),
@@ -62,9 +87,19 @@ private fun onAccent(accent: Color): Color =
     if (accent.luminance() > 0.45f) Color(0xFF06121F) else Color(0xFFF6FAFF)
 
 @Composable
-fun FytRadioTheme(accentArgb: Int = DefaultAccentArgb, content: @Composable () -> Unit) {
+fun FytRadioTheme(
+    accentArgb: Int = DefaultAccentArgb,
+    themeMode: ThemeMode = ThemeMode.DARK,
+    content: @Composable () -> Unit,
+) {
+    val dark = when (themeMode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
     val accent = Color(accentArgb)
-    val scheme = CarDark.copy(
+    val base = if (dark) CarDark else CarLight
+    val scheme = base.copy(
         primary = accent,
         onPrimary = onAccent(accent),
         primaryContainer = accent,
