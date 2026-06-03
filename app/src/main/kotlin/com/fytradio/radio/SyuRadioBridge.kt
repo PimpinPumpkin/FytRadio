@@ -44,6 +44,9 @@ class SyuRadioBridge(
     private val appContext: Context,
     private val onUpdate: (updateId: Int, ints: IntArray?, flts: FloatArray?, strs: Array<String?>?) -> Unit,
 ) {
+    /** Invoked on the main thread once the toolkit + radio module are connected and subscribed.
+     *  Used by the controller to fire auto-start only after commands can actually be sent. */
+    var onConnected: (() -> Unit)? = null
     /** Stock SYU command IDs (FinalRadio.C_*). */
     object Cmds {
         const val NEXT_CHANNEL = 0
@@ -178,6 +181,8 @@ class SyuRadioBridge(
             soundModule = doGetRemoteModule(MODULE_CODE_SOUND)
             for (u in SUBSCRIBED_UPDATES) doRegister(radio, u)
             Log.i(TAG, "Subscribed to ${SUBSCRIBED_UPDATES.size} updates (main=${mainModule != null} sound=${soundModule != null})")
+            runCatching { onConnected?.invoke() }
+                .onFailure { Log.w(TAG, "onConnected handler threw: ${it.message}") }
         }
 
         override fun onServiceDisconnected(name: ComponentName) {

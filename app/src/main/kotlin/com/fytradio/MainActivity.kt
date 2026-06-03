@@ -23,11 +23,22 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putInt("accent", argb).apply()
     }
 
+    private val autoStart = MutableStateFlow(true)
+    private fun setAutoStart(enabled: Boolean) {
+        autoStart.value = enabled
+        prefs.edit().putBoolean("auto_start", enabled).apply()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val presets = PresetStore(applicationContext)
         controller = RadioController(applicationContext, presets)
         accentArgb.value = prefs.getInt("accent", DefaultAccentArgb)
+        autoStart.value = prefs.getBoolean("auto_start", true)
+
+        // Fresh open: if enabled, queue a power-on that fires once the tuner is connected
+        // (grabs the MCU audio source, pausing whatever else was playing).
+        if (autoStart.value) controller.armAutoStart()
 
         setContent {
             val accent by accentArgb.collectAsState()
@@ -35,6 +46,7 @@ class MainActivity : ComponentActivity() {
                 val tuner by controller.tuner.collectAsState()
                 val presetState by controller.presetState.collectAsState()
                 val diagnostics by controller.diagnostics.collectAsState()
+                val autoStartOn by autoStart.collectAsState()
 
                 RadioScreen(
                     tuner = tuner,
@@ -42,6 +54,8 @@ class MainActivity : ComponentActivity() {
                     diagnostics = diagnostics,
                     accentArgb = accent,
                     onPickAccent = { setAccent(it) },
+                    autoStart = autoStartOn,
+                    onSetAutoStart = { setAutoStart(it) },
                     onSetBand = { controller.setBand(it) },
                     onTogglePower = { controller.togglePower() },
                     onSeekDown = { controller.seekDown() },

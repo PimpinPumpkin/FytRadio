@@ -44,6 +44,8 @@ fun RadioScreen(
     diagnostics: List<String>,
     accentArgb: Int,
     onPickAccent: (Int) -> Unit,
+    autoStart: Boolean,
+    onSetAutoStart: (Boolean) -> Unit,
     onSetBand: (Band) -> Unit,
     onTogglePower: () -> Unit,
     onSeekDown: () -> Unit,
@@ -127,6 +129,8 @@ fun RadioScreen(
                 SettingsDialog(
                     selectedAccent = accentArgb,
                     onPickAccent = onPickAccent,
+                    autoStart = autoStart,
+                    onSetAutoStart = onSetAutoStart,
                     onDismiss = { showSettings = false },
                 )
             }

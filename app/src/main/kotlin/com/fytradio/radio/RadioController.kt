@@ -58,7 +58,21 @@ class RadioController(
 
     private val bridge = SyuRadioBridge(appContext) { u, ints, _, strs ->
         handleUpdate(u, ints, strs)
+    }.also { b ->
+        b.onConnected = {
+            // Fire a queued auto-start only once the toolkit is actually connected, so the
+            // powerOn() command isn't dropped on the floor before the binder is ready.
+            if (pendingAutoStart) {
+                pendingAutoStart = false
+                Log.i(TAG, "auto-start: powering on radio")
+                powerOn()
+            }
+        }
     }
+
+    /** Set by the activity on a fresh open when the "start radio on open" setting is on;
+     *  consumed once the bridge connects. */
+    private var pendingAutoStart = false
 
     /** True while WE are holding a global mute (powered off but still owning the source).
      *  Used to make sure we never leave the head unit muted when our app goes away. */
@@ -77,6 +91,12 @@ class RadioController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     /** Active "step to a preset frequency" job; cancelled if the user tunes manually. */
     private var recallJob: Job? = null
+
+    /** Queue an auto power-on for the next bridge connection. Call before [register] on a
+     *  fresh app open when the user's "start radio on open" setting is enabled. */
+    fun armAutoStart() {
+        pendingAutoStart = true
+    }
 
     fun register() {
         bridge.bind()

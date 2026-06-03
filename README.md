@@ -38,6 +38,9 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
   save the current station — the RDS station name is saved alongside the frequency when
   it's known, so tiles can read "92.5 / KEXP".
 - Accent color picker tucked behind a settings gear in the corner (no extra tab).
+- **Start radio when app opens** (settings toggle, on by default): on launch the app grabs
+  the MCU audio source as soon as the tuner connects, pausing whatever else was playing
+  (Bluetooth / other apps). Turn it off to leave the current source alone until you tap power.
 - "No tuner feedback yet" diagnostic panel that lists the last 20 SYU module updates
   received — handy for confirming the MCU is awake and talking (see `NOTES.md`).
 
