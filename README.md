@@ -13,6 +13,10 @@ front-end for the same tuner — big frequency readout, six presets, and not muc
 > **7862** boards (same SYU `com.syu.ms` IPC + `com.syu.carradio` stack); only the FM
 > frequency-unit encoding differs by firmware and the app auto-detects that. Other
 > resolutions aren't laid out for.
+>
+> Installs on **Android 8+ (minSdk 26)** so it runs on older units like the UIS7862
+> (Android 10). It's a single universal APK — install it directly; you don't need SAI
+> or any split-APK installer.
 
 Non-rooted. Coexists with the stock apps rather than replacing them.
 

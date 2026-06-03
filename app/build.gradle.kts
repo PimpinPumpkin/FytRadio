@@ -15,7 +15,9 @@ android {
 
     defaultConfig {
         applicationId = "com.fytradio"
-        minSdk = 31
+        // 26 (Android 8) so it installs on older FYT units like the UIS7862 (Android 10).
+        // The only 12+ API we use (dynamic color) is guarded at runtime; adaptive icons need 26.
+        minSdk = 26
         targetSdk = 33
         // Overridable from CI: -PversionCode=N -PversionName=X (derived from the git tag).
         versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
