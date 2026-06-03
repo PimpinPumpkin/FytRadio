@@ -51,6 +51,8 @@ fun RadioScreen(
     onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
     onSetAutoStart: (Boolean) -> Unit,
+    forceMono: Boolean,
+    onSetForceMono: (Boolean) -> Unit,
     onSetBand: (Band) -> Unit,
     onTogglePower: () -> Unit,
     onSeekDown: () -> Unit,
@@ -93,8 +95,8 @@ fun RadioScreen(
                 frequencyKhz = tuner.frequencyKhz,
                 rdsPs = tuner.rdsPs,
                 rdsRt = tuner.rdsRt,
+                pty = tuner.pty,
                 stereo = tuner.stereo,
-                signal = tuner.signal,
                 confirmedByMcu = tuner.confirmedByMcu,
                 powered = tuner.isOnAir,
                 searching = tuner.searching,
@@ -117,6 +119,7 @@ fun RadioScreen(
             PresetGridForBand(
                 band = tuner.band,
                 statePresets = presets,
+                currentKhz = tuner.frequencyKhz,
                 onRecall = onRecallPreset,
                 onSave = onSavePreset,
             )
@@ -140,6 +143,8 @@ fun RadioScreen(
                     onSetThemeMode = onSetThemeMode,
                     autoStart = autoStart,
                     onSetAutoStart = onSetAutoStart,
+                    forceMono = forceMono,
+                    onSetForceMono = onSetForceMono,
                     onDismiss = { showSettings = false },
                 )
             }

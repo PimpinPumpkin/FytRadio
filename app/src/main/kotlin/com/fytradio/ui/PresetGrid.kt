@@ -2,6 +2,7 @@ package com.fytradio.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import com.fytradio.radio.formatFrequency
 fun PresetGrid(
     band: Band,
     presets: List<Preset?>,
+    currentKhz: Int,
     onRecall: (Int) -> Unit,
     onSave: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -52,6 +54,7 @@ fun PresetGrid(
                         slot = slot,
                         band = band,
                         preset = preset,
+                        tunedHere = preset != null && preset.freqKhz == currentKhz,
                         modifier = Modifier.weight(1f),
                         onTap = { if (preset != null) onRecall(slot) },
                         onLongPress = { onSave(slot) },
@@ -80,16 +83,24 @@ private fun PresetCell(
     slot: Int,
     band: Band,
     preset: Preset?,
+    tunedHere: Boolean,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bg = MaterialTheme.colorScheme.surface
+    // Tint + ring the tile we're currently tuned to.
+    val bg = if (tunedHere) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+    else MaterialTheme.colorScheme.surface
     val fg = MaterialTheme.colorScheme.onSurface
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
+            .then(
+                if (tunedHere) Modifier.border(
+                    2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp),
+                ) else Modifier
+            )
             .combinedClickable(
                 onClick = onTap,
                 onLongClick = onLongPress,
@@ -144,6 +155,7 @@ private fun PresetCell(
 fun PresetGridForBand(
     band: Band,
     statePresets: Map<Band, List<Preset?>>,
+    currentKhz: Int,
     onRecall: (Int) -> Unit,
     onSave: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -152,6 +164,7 @@ fun PresetGridForBand(
     PresetGrid(
         band = band,
         presets = list,
+        currentKhz = currentKhz,
         onRecall = onRecall,
         onSave = onSave,
         modifier = modifier,

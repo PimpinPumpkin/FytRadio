@@ -56,6 +56,8 @@ fun SettingsDialog(
     onSetThemeMode: (ThemeMode) -> Unit,
     autoStart: Boolean,
     onSetAutoStart: (Boolean) -> Unit,
+    forceMono: Boolean,
+    onSetForceMono: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
@@ -95,6 +97,25 @@ fun SettingsDialog(
                         )
                     }
                     Switch(checked = autoStart, onCheckedChange = onSetAutoStart)
+                }
+                Spacer16()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Force mono",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Cleaner audio on weak FM stations",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = forceMono, onCheckedChange = onSetForceMono)
                 }
                 Spacer16()
                 Text(

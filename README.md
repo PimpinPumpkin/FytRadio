@@ -28,29 +28,33 @@ Non-rooted. Coexists with the stock apps rather than replacing them.
 
 ## What's built
 
-- Large frequency display (FM rendered as `101.1 MHz`, AM as `1010 kHz`). The MCU's
-  frequency unit (kHz vs. dekahertz) is auto-detected, so the readout is correct across
-  firmwares.
+- Large frequency display (FM rendered as `101.1 MHz`, AM as `1010 kHz`), **animated** on
+  change. The MCU's frequency unit (kHz vs. dekahertz) is auto-detected, so the readout is
+  correct across firmwares.
 - AM/FM segmented band toggle.
-- Signal-strength bars, stereo pill, RDS station name (PS) + radio text (RT) — the
-  latter is the closest thing radio has to a "now playing" track line. Both display
-  automatically once the tuner emits them; no button needed. (RDS is FM-only and depends
-  on signal + the station broadcasting it.)
+- RDS: station name (PS), **scrolling radio text** (RT — the closest thing radio has to a
+  "now playing" line), a **genre/PTY** chip, plus stereo + a "live" lock dot. (FM-only,
+  signal permitting.) There's deliberately **no signal-strength meter** — the SYU radio
+  module doesn't expose a reception level, so rather than fake a bar graph we show what's
+  real (RDS lock + stereo).
+- Opens on your **last station** (remembered across launches) and **highlights the preset**
+  you're currently tuned to.
 - **Power button** in the frequency-card corner. On = radio becomes the active MCU
   audio source (`C_APP_ID → APP_ID_RADIO`) and audio is unmuted. Off = the audio is
   **muted** (sound module `C_VOL → VOL_MUTE`) while we keep *holding* the radio source,
   so no other app (Bluetooth/Spotify) auto-resumes — a truly silent "off". Leaving the
   app while off auto-unmutes and releases the source, so the unit is never left stuck
   muted.
-- Tune ± step (◁▷ = one channel step), seek ± (⏮⏭ = auto-seek to the next station),
-  and a center **SCAN** that sweeps the band and auto-stores presets ("auto discover").
+- Tune ± step (◁▷ = one channel step, **press-and-hold to keep stepping**), seek ±
+  (⏮⏭ = auto-seek to the next station), and a center **SCAN** that sweeps the band and
+  auto-stores presets ("auto discover").
 - 6 presets per band, persisted in `SharedPreferences`. Tap to recall, long-press to
   save the current station — the RDS station name is saved alongside the frequency when
   it's known, so tiles can read "92.5 / KEXP".
 - Settings behind a corner gear (no extra tab): **theme** (System / Light / Dark, defaults
   to System), **accent color** — preset swatches, an arbitrary **custom color** picker
   (hue + saturation/value), or **Material You** to pull the accent from the device's colors
-  — and the auto-start toggle.
+  — plus the auto-start and **force-mono** (cleaner weak-FM audio) toggles.
 - **Start radio when app opens** (on by default): on launch — and whenever you switch back
   to the app from Bluetooth/another source — the radio reclaims the MCU audio source,
   pausing whatever else was playing. Turn it off to leave the current source alone until

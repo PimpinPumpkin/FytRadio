@@ -32,8 +32,16 @@ class RadioController(
     private val presets: PresetStore,
     val region: Region = Region.US,
 ) {
+    // Remembers the last station across launches. These units' MCU resumes the last station on
+    // power-up, so showing it immediately (and syncing to the MCU's U_FREQ) "just works".
+    private val statePrefs = appContext.getSharedPreferences("fytradio_state", Context.MODE_PRIVATE)
+    private val initialBand =
+        runCatching { Band.valueOf(statePrefs.getString("last_band", Band.FM.name)!!) }.getOrDefault(Band.FM)
+    private val initialFreq =
+        statePrefs.getInt("last_freq", region.fmMinKhz + 24 * region.fmStepKhz)
+
     private val _tuner = MutableStateFlow(
-        TunerState(band = Band.FM, frequencyKhz = region.fmMinKhz + 24 * region.fmStepKhz),
+        TunerState(band = initialBand, frequencyKhz = initialFreq),
     )
     val tuner: StateFlow<TunerState> = _tuner
 
@@ -122,6 +130,9 @@ class RadioController(
 
     fun unregister() {
         recallJob?.cancel()
+        // Remember the current station so the next launch opens on it.
+        val s = _tuner.value
+        statePrefs.edit().putString("last_band", s.band.name).putInt("last_freq", s.frequencyKhz).apply()
         // Safety: if we backgrounded while powered-off (radio source held + muted), undo
         // both so we don't leave the unit silently muted or stuck on a dead radio source.
         if (mutedByUs) {
@@ -141,7 +152,7 @@ class RadioController(
         // that arrives right after the switch (it would otherwise revert the UI).
         pendingBand = band
         pendingBandAtMs = SystemClock.uptimeMillis()
-        _tuner.update { it.copy(band = band, frequencyKhz = lastKnownOrDefault(band), rdsPs = null, rdsRt = null) }
+        _tuner.update { it.copy(band = band, frequencyKhz = lastKnownOrDefault(band), rdsPs = null, rdsRt = null, pty = null) }
         bridge.setBand(band)
     }
 
@@ -151,7 +162,7 @@ class RadioController(
         recallJob?.cancel()
         val s = _tuner.value
         val next = region.nextOnGrid(s.band, s.frequencyKhz, +1)
-        _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null) }
+        _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null, pty = null) }
         bridge.stepUp()
     }
 
@@ -159,7 +170,7 @@ class RadioController(
         recallJob?.cancel()
         val s = _tuner.value
         val next = region.nextOnGrid(s.band, s.frequencyKhz, -1)
-        _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null) }
+        _tuner.update { it.copy(frequencyKhz = next, rdsPs = null, rdsRt = null, pty = null) }
         bridge.stepDown()
     }
 
@@ -177,7 +188,7 @@ class RadioController(
 
     fun tuneTo(khz: Int) {
         val band = _tuner.value.band
-        _tuner.update { it.copy(rdsPs = null, rdsRt = null) }
+        _tuner.update { it.copy(rdsPs = null, rdsRt = null, pty = null) }
         stepToward(band, region.clampToGrid(band, khz), "tuneTo")
     }
 
@@ -188,7 +199,7 @@ class RadioController(
         // The MCU ignores direct frequency-set (C_FREQ) and won't reliably store our presets in
         // its own table, but FREQ_UP/FREQ_DOWN are rock-solid — so step from where the tuner
         // actually is to our saved frequency. Each step echoes U_FREQ, keeping the UI honest.
-        _tuner.update { it.copy(rdsPs = preset.name, rdsRt = null) }
+        _tuner.update { it.copy(rdsPs = preset.name, rdsRt = null, pty = null) }
         stepToward(band, target, "recall[$index]")
     }
 
@@ -247,6 +258,9 @@ class RadioController(
         mutedByUs = true
         _tuner.update { it.copy(isOnAir = false, searching = false) }
     }
+
+    /** Force mono (helps weak FM) vs. allow stereo. The MCU echoes U_STEREO back either way. */
+    fun setForceMono(mono: Boolean) = bridge.setForceMono(mono)
 
     /** Auto-discover: sweep the band and let the MCU refill its preset list. */
     fun scan() {
@@ -308,6 +322,10 @@ class RadioController(
             SyuRadioBridge.Updates.RDS_TEXT -> {
                 val rt = strs?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: return
                 _tuner.update { it.copy(rdsRt = rt) }
+            }
+            SyuRadioBridge.Updates.PTY_ID -> {
+                val code = ints?.firstOrNull() ?: return
+                _tuner.update { it.copy(pty = ptyName(region, code)) }
             }
             SyuRadioBridge.Updates.CHANNEL -> {
                 // The MCU also tracks its own preset list, but we don't surface that yet —

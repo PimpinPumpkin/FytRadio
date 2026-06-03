@@ -75,11 +75,36 @@ fun bandUnit(band: Band): String = if (band == Band.FM) "MHz" else "kHz"
 data class TunerState(
     val band: Band = Band.FM,
     val frequencyKhz: Int = 101_100,
-    val signal: Int = 0,           // 0..5; 0 if unknown
     val stereo: Boolean = false,
     val rdsPs: String? = null,     // RDS program service name (8 chars)
     val rdsRt: String? = null,     // RDS radio text (up to 64 chars)
+    val pty: String? = null,       // RDS program type / genre, region-mapped
     val isOnAir: Boolean = false,  // radio is the active MCU source (= power on)
     val searching: Boolean = false,// auto-seek / scan in progress
     val confirmedByMcu: Boolean = false,
+)
+
+/**
+ * RDS Program-Type name for a raw PTY code. The US (RBDS) and European (RDS) tables differ,
+ * so we pick by region. Code 0 (and unknowns) return null = "don't show a genre chip".
+ */
+fun ptyName(region: Region, code: Int): String? {
+    if (code <= 0 || code > 31) return null
+    val table = if (region == Region.US) RBDS_PTY else RDS_PTY
+    return table.getOrNull(code)?.takeIf { it.isNotEmpty() }
+}
+
+private val RBDS_PTY = listOf(
+    "", "News", "Information", "Sports", "Talk", "Rock", "Classic Rock", "Adult Hits",
+    "Soft Rock", "Top 40", "Country", "Oldies", "Soft", "Nostalgia", "Jazz", "Classical",
+    "R&B", "Soft R&B", "Language", "Religious Music", "Religious Talk", "Personality",
+    "Public", "College", "", "", "", "", "", "Weather", "Emergency Test", "Emergency",
+)
+
+private val RDS_PTY = listOf(
+    "", "News", "Current Affairs", "Information", "Sport", "Education", "Drama", "Culture",
+    "Science", "Varied", "Pop", "Rock", "Easy Listening", "Light Classical", "Classical",
+    "Other Music", "Weather", "Finance", "Children", "Social", "Religion", "Phone In",
+    "Travel", "Leisure", "Jazz", "Country", "National Music", "Oldies", "Folk",
+    "Documentary", "Alarm Test", "Alarm",
 )

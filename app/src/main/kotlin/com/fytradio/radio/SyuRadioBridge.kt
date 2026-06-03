@@ -120,6 +120,7 @@ class SyuRadioBridge(
         Updates.RDS_TEXT,
         Updates.RDS_CHANNEL_TEXT,
         Updates.RDS_ENABLE,
+        Updates.PTY_ID,
         Updates.SEARCH_STATE,
         Updates.CHANNEL,
         Updates.CHANNEL_FREQ,
@@ -280,6 +281,10 @@ class SyuRadioBridge(
 
     /** Band scan / auto-store: the MCU sweeps the band and refills the preset list. */
     fun scan() = cmd(Cmds.SCAN)
+
+    /** Force mono (1) vs. allow stereo (0) — helps with weak/noisy FM. Arg form unverified;
+     *  the MCU echoes U_STEREO either way so the UI still reflects the real state. */
+    fun setForceMono(mono: Boolean) = cmd(Cmds.STEREO, intArrayOf(if (mono) 1 else 0))
     fun setBand(band: Band) = cmd(
         Cmds.BAND,
         intArrayOf(if (band == Band.FM) Cmds.BAND_SWITCH_FM else Cmds.BAND_SWITCH_AM),

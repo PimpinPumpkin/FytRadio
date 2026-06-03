@@ -1,6 +1,15 @@
 package com.fytradio.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,9 +42,10 @@ import com.fytradio.radio.bandUnit
 import com.fytradio.radio.formatFrequency
 
 /**
- * The big slab at the top — frequency, RDS, and a subtle "live" pulse when the MCU has
- * confirmed our state at least once. Sits inside a rounded surface so it reads as a
- * tuner panel rather than floating text on black.
+ * The big slab at the top — frequency (animated on change), RDS station name + radio text
+ * (marquee'd if long), genre, and stereo/live status. There is no signal meter: the SYU
+ * radio module doesn't expose a reception level, so we show what's real (RDS lock + stereo)
+ * rather than a fake bar graph.
  */
 @Composable
 fun FrequencyDisplay(
@@ -43,8 +53,8 @@ fun FrequencyDisplay(
     frequencyKhz: Int,
     rdsPs: String?,
     rdsRt: String?,
+    pty: String?,
     stereo: Boolean,
-    signal: Int,
     confirmedByMcu: Boolean,
     powered: Boolean,
     searching: Boolean,
@@ -62,8 +72,8 @@ fun FrequencyDisplay(
         ) {
             StatusStrip(
                 band = band,
+                pty = pty,
                 stereo = stereo,
-                signal = signal,
                 live = confirmedByMcu,
                 powered = powered,
                 searching = searching,
@@ -71,7 +81,7 @@ fun FrequencyDisplay(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(12.dp))
-            FrequencyText(band = band, frequencyKhz = frequencyKhz)
+            AnimatedFrequency(band = band, frequencyKhz = frequencyKhz)
             Spacer(Modifier.height(4.dp))
             Text(
                 text = bandUnit(band),
@@ -80,36 +90,24 @@ fun FrequencyDisplay(
             )
             if (rdsPs != null || rdsRt != null) {
                 Spacer(Modifier.height(20.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        if (rdsPs != null) {
-                            Text(
-                                text = rdsPs,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        if (rdsRt != null) {
-                            if (rdsPs != null) Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = rdsRt,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2,
-                            )
-                        }
-                    }
-                }
+                RdsCard(rdsPs = rdsPs, rdsRt = rdsRt)
             }
         }
+    }
+}
+
+@Composable
+private fun AnimatedFrequency(band: Band, frequencyKhz: Int) {
+    AnimatedContent(
+        targetState = frequencyKhz,
+        transitionSpec = {
+            val dir = if (targetState > initialState) 1 else -1
+            (slideInVertically(tween(180)) { h -> dir * h } + fadeIn(tween(180))) togetherWith
+                (slideOutVertically(tween(180)) { h -> -dir * h } + fadeOut(tween(180)))
+        },
+        label = "frequency",
+    ) { freq ->
+        FrequencyText(band = band, frequencyKhz = freq)
     }
 }
 
@@ -142,13 +140,47 @@ private fun FrequencyText(band: Band, frequencyKhz: Int) {
     }
 }
 
-/** Top strip of the frequency card: band tag, signal bars, stereo/seek pills, live dot,
- *  and the power button in the corner. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RdsCard(rdsPs: String?, rdsRt: String?) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (rdsPs != null) {
+                Text(
+                    text = rdsPs,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            if (rdsRt != null) {
+                if (rdsPs != null) Spacer(Modifier.height(4.dp))
+                Text(
+                    text = rdsRt,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.fillMaxWidth().basicMarquee(),
+                )
+            }
+        }
+    }
+}
+
+/** Top strip: band tag + genre + seeking on the left; stereo, live dot, power on the right. */
 @Composable
 private fun StatusStrip(
     band: Band,
+    pty: String?,
     stereo: Boolean,
-    signal: Int,
     live: Boolean,
     powered: Boolean,
     searching: Boolean,
@@ -166,8 +198,10 @@ private fun StatusStrip(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            Spacer(Modifier.size(12.dp))
-            SignalBars(signal = signal)
+            if (pty != null) {
+                Spacer(Modifier.size(10.dp))
+                Pill(text = pty.uppercase(), tint = MaterialTheme.colorScheme.primary)
+            }
             if (searching) {
                 Spacer(Modifier.size(10.dp))
                 Pill(text = "SEEKING…", tint = MaterialTheme.colorScheme.tertiary)
@@ -204,27 +238,6 @@ private fun PowerButton(powered: Boolean, onClick: () -> Unit) {
             tint = fg,
             modifier = Modifier.size(24.dp),
         )
-    }
-}
-
-@Composable
-private fun SignalBars(signal: Int) {
-    val on = signal.coerceIn(0, 5)
-    Row(verticalAlignment = Alignment.Bottom) {
-        for (i in 1..5) {
-            val height = (6 + i * 3).dp
-            val color = if (i <= on)
-                MaterialTheme.colorScheme.primary
-            else
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            Box(
-                modifier = Modifier
-                    .padding(end = 3.dp)
-                    .size(width = 4.dp, height = height)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(color),
-            )
-        }
     }
 }
 

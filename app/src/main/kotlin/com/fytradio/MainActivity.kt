@@ -42,6 +42,13 @@ class MainActivity : ComponentActivity() {
         prefs.edit().putBoolean("dynamic_color", enabled).apply()
     }
 
+    private val forceMono = MutableStateFlow(false)
+    private fun setForceMono(enabled: Boolean) {
+        forceMono.value = enabled
+        prefs.edit().putBoolean("force_mono", enabled).apply()
+        controller.setForceMono(enabled)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val presets = PresetStore(applicationContext)
@@ -52,6 +59,7 @@ class MainActivity : ComponentActivity() {
             ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.SYSTEM.name)!!)
         }.getOrDefault(ThemeMode.SYSTEM)
         dynamicColor.value = prefs.getBoolean("dynamic_color", false)
+        forceMono.value = prefs.getBoolean("force_mono", false)
 
         // Fresh open: if enabled, queue a power-on that fires once the tuner is connected
         // (grabs the MCU audio source, pausing whatever else was playing).
@@ -66,6 +74,7 @@ class MainActivity : ComponentActivity() {
                 val presetState by controller.presetState.collectAsState()
                 val diagnostics by controller.diagnostics.collectAsState()
                 val autoStartOn by autoStart.collectAsState()
+                val forceMonoOn by forceMono.collectAsState()
 
                 RadioScreen(
                     tuner = tuner,
@@ -79,6 +88,8 @@ class MainActivity : ComponentActivity() {
                     onSetThemeMode = { setThemeMode(it) },
                     autoStart = autoStartOn,
                     onSetAutoStart = { setAutoStart(it) },
+                    forceMono = forceMonoOn,
+                    onSetForceMono = { setForceMono(it) },
                     onSetBand = { controller.setBand(it) },
                     onTogglePower = { controller.togglePower() },
                     onSeekDown = { controller.seekDown() },
