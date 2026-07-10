@@ -53,7 +53,7 @@ private val CarDark = darkColorScheme(
     onError = Color(0xFF370001),
 )
 
-// Light counterpart — high-contrast, low-glare for daytime.
+// Light counterpart: high-contrast, low-glare for daytime.
 private val CarLight = lightColorScheme(
     primary = Color(DefaultAccentArgb),
     onPrimary = Color(0xFF002A52),

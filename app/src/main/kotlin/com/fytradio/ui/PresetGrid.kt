@@ -63,7 +63,7 @@ fun PresetGrid(
             }
             if (row == 0) Spacer(Modifier.height(10.dp))
         }
-        // Only nudge people about long-press while the band has no saved stations — once
+        // Only nudge people about long-press while the band has no saved stations; once
         // they've saved one, they get it.
         if (presets.all { it == null }) {
             Spacer(Modifier.height(8.dp))

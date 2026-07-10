@@ -19,7 +19,7 @@ import com.fytradio.radio.Band
 
 /**
  * Segmented band toggle. Pill-shaped container, slide-style highlight on the selected
- * band — like the Pixel dialer's tab switcher rather than M3's flatter SegmentedButton.
+ * band, like the Pixel dialer's tab switcher rather than M3's flatter SegmentedButton.
  */
 @Composable
 fun BandSelector(

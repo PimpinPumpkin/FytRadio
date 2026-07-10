@@ -14,7 +14,7 @@ import android.util.Log
  * `com.syu.carradio` APK, which bundles the same `com.syu.ipc` client library that
  * NavRadio and friends use.
  *
- * Protocol (raw transact() — sidesteps AIDL stub generation, gives us total control
+ * Protocol (raw transact(); sidesteps AIDL stub generation, gives us total control
  * over the wire format):
  *
  * 1. `bindService(action = "com.syu.ms.toolkit", package = "com.syu.ms")` → IBinder
@@ -34,11 +34,11 @@ import android.util.Log
  *      - 1: `update(int updateId, int[] ints, float[] flts, String[] strs)` → void
  *
  * Commands ([Cmds]) are sent to the MCU through the radio module via [cmd]. Examples:
- *   - `cmd(C_SEEK_UP)` — auto-seek up
- *   - `cmd(C_FREQ_UP)` — one tuning step up
- *   - `cmd(C_BAND, intArrayOf(BAND_SWITCH_FM))` — switch to FM
- *   - `cmd(C_SELECT_CHANNEL, intArrayOf(presetIndex))` — recall preset N
- *   - `cmd(C_SAVE_CHANNEL, intArrayOf(presetIndex))` — save current to preset N
+ *   - `cmd(C_SEEK_UP)`: auto-seek up
+ *   - `cmd(C_FREQ_UP)`: one tuning step up
+ *   - `cmd(C_BAND, intArrayOf(BAND_SWITCH_FM))`: switch to FM
+ *   - `cmd(C_SELECT_CHANNEL, intArrayOf(presetIndex))`: recall preset N
+ *   - `cmd(C_SAVE_CHANNEL, intArrayOf(presetIndex))`: save current to preset N
  */
 class SyuRadioBridge(
     private val appContext: Context,
@@ -129,7 +129,7 @@ class SyuRadioBridge(
     /** MAIN module constants. C_APP_ID drives the MCU's active audio source. */
     object Main {
         const val C_APP_ID = 0
-        const val APP_ID_RADIO = 1       // tuner — what we want
+        const val APP_ID_RADIO = 1       // tuner, what we want
         const val APP_ID_BTAV = 3        // Bluetooth audio
         const val APP_ID_CAR_RADIO = 11  // alternate "car radio" id on some FYT builds
         const val APP_ID_NULL = 0
@@ -221,15 +221,15 @@ class SyuRadioBridge(
     }
 
     /** Send a radio command. Returns true if the transact succeeded; false on RemoteException
-     *  or if we are not currently bound. Safe to call before bind() — it just no-ops. */
+     *  or if we are not currently bound. Safe to call before bind(); it just no-ops. */
     fun cmd(command: Int, ints: IntArray? = null, flts: FloatArray? = null, strs: Array<String?>? = null): Boolean =
         cmdOn(module, "radio", command, ints, flts, strs)
 
-    /** Same as [cmd] but targets the MAIN module — used for source switching via C_APP_ID. */
+    /** Same as [cmd] but targets the MAIN module, used for source switching via C_APP_ID. */
     fun cmdMain(command: Int, ints: IntArray? = null, flts: FloatArray? = null, strs: Array<String?>? = null): Boolean =
         cmdOn(mainModule, "main", command, ints, flts, strs)
 
-    /** Same as [cmd] but targets the SOUND module — used for global mute/unmute. */
+    /** Same as [cmd] but targets the SOUND module, used for global mute/unmute. */
     fun cmdSound(command: Int, ints: IntArray? = null, flts: FloatArray? = null, strs: Array<String?>? = null): Boolean =
         cmdOn(soundModule, "sound", command, ints, flts, strs)
 
@@ -282,7 +282,7 @@ class SyuRadioBridge(
     /** Band scan / auto-store: the MCU sweeps the band and refills the preset list. */
     fun scan() = cmd(Cmds.SCAN)
 
-    /** Force mono (1) vs. allow stereo (0) — helps with weak/noisy FM. Arg form unverified;
+    /** Force mono (1) vs. allow stereo (0); helps with weak/noisy FM. Arg form unverified;
      *  the MCU echoes U_STEREO either way so the UI still reflects the real state. */
     fun setForceMono(mono: Boolean) = cmd(Cmds.STEREO, intArrayOf(if (mono) 1 else 0))
     fun setBand(band: Band) = cmd(
@@ -342,7 +342,7 @@ class SyuRadioBridge(
             mod.transact(MODULE_TRANS_UNREGISTER, data, reply, 0)
             reply.readException()
         } catch (_: Throwable) {
-            // Best-effort on teardown — host service may already be gone.
+            // Best-effort on teardown; the host service may already be gone.
         } finally {
             data.recycle()
             reply.recycle()
@@ -351,12 +351,12 @@ class SyuRadioBridge(
 
     /**
      * Source switch: tell the MAIN module to set the MCU's active appid to radio. This is
-     * the direct path NavRadio uses — no activity flash, no dependency on the stock radio
+     * the direct path NavRadio uses: no activity flash, no dependency on the stock radio
      * being installed/enabled.
      *
      * Tries `APP_ID_RADIO=1` first, then `APP_ID_CAR_RADIO=11` if the unit's MCU prefers
      * that one (varies by FYT build). Falls back to launching the stock activity if the
-     * MAIN module isn't available — e.g. if the toolkit bind failed.
+     * MAIN module isn't available, e.g. if the toolkit bind failed.
      */
     fun makeRadioActiveSource(): Boolean {
         if (mainModule != null) {
@@ -370,7 +370,7 @@ class SyuRadioBridge(
         }
         // Activity-launch fallback. com.syu.carradio's launcher activity is `enabled=2`
         // (disabled) on units where the user replaced the stock radio with a 3rd-party app
-        // like NavRadio — in that case this will fail silently and we just log.
+        // like NavRadio; in that case this will fail silently and we just log.
         val intent = appContext.packageManager.getLaunchIntentForPackage(SYU_CARRADIO_PKG)
             ?: Intent(Intent.ACTION_MAIN).setPackage(SYU_CARRADIO_PKG).addCategory(Intent.CATEGORY_LAUNCHER)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -383,7 +383,7 @@ class SyuRadioBridge(
      * `C_APP_ID = APP_ID_NULL`, which hands the MCU back to no/previous source.
      *
      * If APP_ID_NULL leaves the speakers on a dead source on some firmware, switching to
-     * APP_ID_LAST (-1) instead is the alternative — left as a one-line change.
+     * APP_ID_LAST (-1) instead is the alternative, left as a one-line change.
      */
     fun makeRadioInactive(): Boolean {
         if (mainModule == null) return false
@@ -397,7 +397,7 @@ class SyuRadioBridge(
         const val SYU_CARRADIO_PKG = "com.syu.carradio"
         const val TOOLKIT_ACTION = "com.syu.ms.toolkit"
 
-        // Descriptors must match the server side exactly — these are the strings
+        // Descriptors must match the server side exactly; these are the strings
         // baked into FinalRadio / IRemoteToolkit$Stub / IRemoteModule$Stub etc.
         const val IREMOTE_TOOLKIT_DESCRIPTOR = "com.syu.ipc.IRemoteToolkit"
         const val IREMOTE_MODULE_DESCRIPTOR = "com.syu.ipc.IRemoteModule"

@@ -107,7 +107,7 @@ private fun CircleButton(
     }
 }
 
-/** "SCAN" — auto-store sweep. Primary-tinted pill, large hit area for driving. */
+/** "SCAN": auto-store sweep. Primary-tinted pill, large hit area for driving. */
 @Composable
 private fun CenterButton(onClick: () -> Unit) {
     Box(

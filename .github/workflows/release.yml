@@ -73,4 +73,4 @@ jobs:
             **Install / update:** copy the APK to the unit and install it. Updates install
             in place over a previous **release** build (same signing key). If you currently
             have a debug build installed, uninstall it once before installing this signed
-            release — after that, future releases upgrade in place.
+            release. After that, future releases upgrade in place.

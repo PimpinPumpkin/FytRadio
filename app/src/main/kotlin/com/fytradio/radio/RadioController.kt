@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.update
  * StateFlow and stays dumb.
  *
  * Lifecycle: call [register] in `onStart`, [unregister] in `onStop`. Register is
- * idempotent — the underlying [SyuRadioBridge.bind] no-ops if already bound.
+ * idempotent; the underlying [SyuRadioBridge.bind] no-ops if already bound.
  *
  * Frequency unit handling: the SYU MCU has its own unit for frequencies which varies
  * by firmware. We read the band's `[min, max, step, count]` quad off the U_EXTRA_FREQ_INFO
@@ -55,7 +55,7 @@ class RadioController(
      * firmware: dekahertz (raw 8750..10790, ×10 = kHz) on UNISOC, or kHz directly
      * (87500..107900, ×1) on PX. AM is kHz on every unit seen (×1).
      *
-     * `0` = not yet learned. We can't depend on U_EXTRA_FREQ_INFO to tell us — it only
+     * `0` = not yet learned. We can't depend on U_EXTRA_FREQ_INFO to tell us: it only
      * fires on a band *switch*, so a session that boots already on FM and just changes
      * stations never receives it. Instead we learn the multiplier from the magnitude of
      * the first raw frequency we see (FM dekahertz tops out ~10800; kHz starts ~87500;
@@ -76,7 +76,7 @@ class RadioController(
                     Log.i(TAG, "auto-start: powering on radio")
                     powerOn()
                 }
-                // Warm reconnect (e.g. came back from Bluetooth) while the radio was on —
+                // Warm reconnect (e.g. came back from Bluetooth) while the radio was on:
                 // reclaim the MCU audio source so BT/other audio actually stops.
                 _tuner.value.isOnAir -> {
                     Log.i(TAG, "reconnect: reclaiming radio source")
@@ -100,7 +100,7 @@ class RadioController(
     private var pendingBand: Band? = null
     private var pendingBandAtMs = 0L
 
-    /** Last MCU-confirmed frequency (from U_FREQ) — the tuner's true position, used as the
+    /** Last MCU-confirmed frequency (from U_FREQ): the tuner's true position, used as the
      *  starting point when stepping to a preset. 0 = not yet known. */
     private var lastConfirmedKhz = 0
 
@@ -116,7 +116,7 @@ class RadioController(
 
     /** Re-assert the radio source when returning to the app, if the radio was on. Covers the
      *  warm switch-back from Bluetooth where the binder stayed connected (so [onConnected]
-     *  doesn't refire). Safe no-op if the binder isn't ready — [onConnected] then handles it. */
+     *  doesn't refire). Safe no-op if the binder isn't ready; [onConnected] then handles it. */
     fun reassertIfOn() {
         if (_tuner.value.isOnAir) {
             Log.i(TAG, "resume: re-asserting radio source")
@@ -197,7 +197,7 @@ class RadioController(
         val preset = presets.get(band, index) ?: return
         val target = region.clampToGrid(band, preset.freqKhz)
         // The MCU ignores direct frequency-set (C_FREQ) and won't reliably store our presets in
-        // its own table, but FREQ_UP/FREQ_DOWN are rock-solid — so step from where the tuner
+        // its own table, but FREQ_UP/FREQ_DOWN are rock-solid, so step from where the tuner
         // actually is to our saved frequency. Each step echoes U_FREQ, keeping the UI honest.
         _tuner.update { it.copy(rdsPs = preset.name, rdsRt = null, pty = null) }
         stepToward(band, target, "recall[$index]")
@@ -227,7 +227,7 @@ class RadioController(
 
     fun savePresetHere(index: Int) {
         val s = _tuner.value
-        // Presets are entirely ours — recall steps the tuner to this exact frequency, so we
+        // Presets are entirely ours: recall steps the tuner to this exact frequency, so we
         // just need the frequency + RDS name stored locally (no dependence on the MCU's own
         // preset table, which it doesn't let us write reliably).
         val freq = if (lastConfirmedKhz > 0) lastConfirmedKhz else s.frequencyKhz
@@ -251,7 +251,7 @@ class RadioController(
     }
 
     fun powerOff() {
-        // Mute the output but DON'T relinquish the source — releasing it makes the MCU
+        // Mute the output but DON'T relinquish the source. Releasing it makes the MCU
         // fall back to its previous source (e.g. Spotify/BT), which then resumes playing.
         // Holding radio + muting gives a truly silent "off". Cleaned up on app background.
         bridge.mute()
@@ -283,7 +283,7 @@ class RadioController(
                     when {
                         band == pend -> pendingBand = null  // MCU confirmed our switch
                         SystemClock.uptimeMillis() - pendingBandAtMs < BAND_ECHO_WINDOW_MS -> {
-                            return  // stale echo of the old band — ignore it
+                            return  // stale echo of the old band; ignore it
                         }
                         else -> pendingBand = null  // window expired; accept external change below
                     }
@@ -296,14 +296,14 @@ class RadioController(
                 val khz = mcuToKhz(band, raw)
                 lastConfirmedKhz = khz
                 Log.i(TAG, "U_FREQ raw=$raw -> ${khz}kHz (band=$band, fmUnit=$fmUnitKhz amUnit=$amUnitKhz)")
-                // A fresh frequency means any seek/scan has landed — clear the searching flag.
+                // A fresh frequency means any seek/scan has landed, so clear the searching flag.
                 _tuner.update { it.copy(frequencyKhz = khz, confirmedByMcu = true, searching = false) }
             }
             SyuRadioBridge.Updates.EXTRA_FREQ_INFO -> {
                 if (ints == null || ints.size < 4) return
                 val max = ints[1]
                 // Refine the learned unit from the band ceiling. Attribute by magnitude, not
-                // local band state — this update can race U_BAND on a switch.
+                // local band state; this update can race U_BAND on a switch.
                 when {
                     max >= 50_000 -> fmUnitKhz = 1   // FM in kHz (PX)
                     max >= 2_000 -> fmUnitKhz = 10   // FM in dekahertz (UNISOC, this unit)
@@ -328,7 +328,7 @@ class RadioController(
                 _tuner.update { it.copy(pty = ptyName(region, code)) }
             }
             SyuRadioBridge.Updates.CHANNEL -> {
-                // The MCU also tracks its own preset list, but we don't surface that yet —
+                // The MCU also tracks its own preset list, but we don't surface that yet;
                 // FytRadio owns its own presets via PresetStore. Diagnostic only.
             }
             SyuRadioBridge.Updates.CHANNEL_FREQ -> {
@@ -356,7 +356,7 @@ class RadioController(
     private fun mcuToKhz(band: Band, raw: Int): Int = when (band) {
         Band.FM -> {
             // Learn the FM unit lazily from the raw magnitude: dekahertz values top out
-            // ~10800, kHz values start ~87500 — split cleanly at 20000.
+            // ~10800, kHz values start ~87500; split cleanly at 20000.
             if (fmUnitKhz == 0 && raw > 0) fmUnitKhz = if (raw < 20_000) 10 else 1
             raw * fmUnitKhz.coerceAtLeast(1)
         }
@@ -366,10 +366,10 @@ class RadioController(
         }
     }
 
-    /** Inverse of [mcuToKhz] — convert a kHz frequency to the MCU's raw unit for direct tune. */
+    /** Inverse of [mcuToKhz]: convert a kHz frequency to the MCU's raw unit for direct tune. */
     private fun khzToMcu(band: Band, khz: Int): Int = when (band) {
-        // Default FM to dekahertz (÷10) if we haven't learned the unit yet — that's this
-        // hardware; on a kHz unit the first FREQ update corrects fmUnitKhz to 1.
+        // Default FM to dekahertz (÷10) if we haven't learned the unit yet (that's this
+        // hardware); on a kHz unit the first FREQ update corrects fmUnitKhz to 1.
         Band.FM -> khz / (if (fmUnitKhz > 0) fmUnitKhz else 10)
         Band.AM -> khz / (if (amUnitKhz > 0) amUnitKhz else 1)
     }

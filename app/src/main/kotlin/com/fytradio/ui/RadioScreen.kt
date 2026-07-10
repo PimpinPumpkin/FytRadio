@@ -34,7 +34,7 @@ import com.fytradio.radio.TunerState
 import com.fytradio.ui.theme.ThemeMode
 
 /**
- * Top-level radio screen. Stateless w.r.t. the controller — everything comes in via
+ * Top-level radio screen. Stateless w.r.t. the controller: everything comes in via
  * params, every action goes out via callback. Easy to preview, easy to unit-test, no
  * coupling to the SYU bridge.
  */
@@ -76,7 +76,7 @@ fun RadioScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Slim header: just a settings gear tucked in the corner — no full tab bar.
+            // Slim header: just a settings gear tucked in the corner, no full tab bar.
             Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick = { showSettings = true },
@@ -173,7 +173,7 @@ private fun UnconfirmedHint(showingDebug: Boolean, onToggleDebug: () -> Unit) {
             Text(
                 text = "Commands reach the tuner over the SYU module IPC, but the MCU isn't " +
                     "sending frequency/RDS back yet. Usually that means the head unit's MCU is " +
-                    "in standby — check that both constant +12V (B+) and ACC/ignition are " +
+                    "in standby. Check that both constant +12V (B+) and ACC/ignition are " +
                     "powered, and the antenna is connected. The live dot turns green on the " +
                     "first update received.",
                 style = MaterialTheme.typography.bodyMedium,

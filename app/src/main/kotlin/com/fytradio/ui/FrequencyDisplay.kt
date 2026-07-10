@@ -42,7 +42,7 @@ import com.fytradio.radio.bandUnit
 import com.fytradio.radio.formatFrequency
 
 /**
- * The big slab at the top — frequency (animated on change), RDS station name + radio text
+ * The big slab at the top: frequency (animated on change), RDS station name + radio text
  * (marquee'd if long), genre, and stereo/live status. There is no signal meter: the SYU
  * radio module doesn't expose a reception level, so we show what's real (RDS lock + stereo)
  * rather than a fake bar graph.

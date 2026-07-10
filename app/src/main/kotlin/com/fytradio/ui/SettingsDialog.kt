@@ -43,7 +43,7 @@ import com.fytradio.ui.theme.ThemeMode
 /**
  * Lightweight settings sheet. Today it just holds the accent-color picker (tapping a
  * swatch recolors the app live and persists). Lives behind the corner gear so it stays
- * out of the way — no full tab.
+ * out of the way (no full tab).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
